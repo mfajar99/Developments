@@ -2,6 +2,7 @@ import supertest from "supertest"
 import { web } from "../src/application/web"
 import { logger } from "../src/application/logging";
 import { UserTest } from "./test-util";
+import bcrypt from "bcrypt";
 
 describe('POST /api/users', () => {
 
@@ -119,4 +120,86 @@ describe('GET /api/users/current', () => {
       expect(response.status).toBe(401);
       expect(response.body.errors).toBeDefined();
    });
+});
+
+describe('PATCH /api/users/current', () => {
+
+   // Sebelum setiap test: buat user dummy di database
+   beforeEach(async () => {
+      await UserTest.create();
+   });
+
+   // Setelah setiap test: hapus user supaya database bersih
+   afterEach(async () => {
+      await UserTest.delete();
+   });
+
+   it('should reject update user if request is invalid', async () => {
+
+      // Kirim permintaan update, tetapi password & name kosong → harus gagal
+      const response = await supertest(web)
+         .patch("/api/users/current")
+         .set("X-API-TOKEN", "test") // Kirim token valid
+         .send({
+            password: "",
+            name: ""
+         });
+
+      logger.debug(response.body);
+
+      // Harus mendapat error validasi
+      expect(response.status).toBe(400);
+      expect(response.body.errors).toBeDefined();
+   });
+
+   it('should reject update user if token is wrong', async () => {
+
+      // Token salah → user tidak ditemukan
+      const response = await supertest(web)
+         .patch("/api/users/current")
+         .set("X-API-TOKEN", "salah")
+         .send({
+            password: "benar",
+            name: "benar"
+         });
+
+      logger.debug(response.body);
+
+      // Harus gagal karena token salah
+      expect(response.status).toBe(401);
+      expect(response.body.errors).toBeDefined();
+   });
+
+   it('should be able to update user name ', async () => {
+
+      // Kirim permintaan update dengan token benar
+      const response = await supertest(web)
+         .patch("/api/users/current")
+         .set("X-API-TOKEN", "test")
+         .send({
+            name: "benar" // Hanya update nama
+         });
+
+      logger.debug(response.body);
+
+      // Harus berhasil update nama
+      expect(response.status).toBe(200);
+      expect(response.body.data.name).toBe("benar");
+   });
+
+   it('should be able to update user password', async () => {
+      const response = await supertest(web)
+         .patch("/api/users/current")
+         .set("X-API-TOKEN", "test")
+         .send({
+            password: "benar"
+         });
+
+      logger.debug(response.body);
+      expect(response.status).toBe(200);
+
+      const user = await UserTest.get();
+      expect(await bcrypt.compare("benar", user.password)).toBe(true);
+   })
+
 });
