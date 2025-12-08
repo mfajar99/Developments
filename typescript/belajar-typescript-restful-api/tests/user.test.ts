@@ -200,7 +200,7 @@ describe('PATCH /api/users/current', () => {
 
       const user = await UserTest.get();
       expect(await bcrypt.compare("benar", user.password)).toBe(true);
-   })
+   });
 });
 
 describe('DELETE /api/users/current', () => {
@@ -224,7 +224,7 @@ describe('DELETE /api/users/current', () => {
       const user = await UserTest.get();
       expect(user.token).toBeNull();
 
-   })
+   });
 
    it('should reject logout user if wrong', async () => {
       const response = await supertest(web)
@@ -234,5 +234,5 @@ describe('DELETE /api/users/current', () => {
       logger.debug(response.body);
       expect(response.status).toBe(401);
       expect(response.body.errors).toBeDefined();
-   })
-})
+   });
+});
